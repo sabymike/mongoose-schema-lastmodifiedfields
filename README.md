@@ -51,7 +51,7 @@ Test can be run simply by installing and running mocha
     mocha
 
 #Authors
-Mike Sabatini (@mikesabatini)[https://twitter.com/mikesabatini]
+Mike Sabatini [@mikesabatini](https://twitter.com/mikesabatini)
 
 #License
 Copyright Mike Sabatini 2014
