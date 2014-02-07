@@ -1,0 +1,28 @@
+{
+    "name":"mongoose-schema-lastmodifiedfields",
+    "version":"0.0.1",
+    "description":"mongoose schema plugin to create last modified fields for each field and update them automatically",
+    "main":"index.js",
+    "scripts": {
+        "test":"mocha"
+    },
+    "keywords": [
+        "mongoose",
+        "schema",
+        "modified",
+        "last",
+        "update"
+    ],
+    "author": "Mike Sabatini <mike@parallelboxes.com>",
+    "license":"MIT",
+    "dependencies": {
+        "underscore":"1.5.x"
+    },
+    "devDependencies":{
+        "mocha":"1.14.x",
+        "should":"2.1.x",
+        "mongoose":"3.8.x",
+        "async":"0.2.x",
+        "sleep":"1.1.x"
+    }
+}
