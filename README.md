@@ -4,6 +4,11 @@ A mongoose plugin that automatically adds last modified fields for each user def
 
 The inspiration for this was a result to extend my mongoose schemas to support real-time and per field data syncing discussed in [@brentsimmons](https://twitter.com/brentsimmons) [post about Vesper syncing here](http://inessential.com/2013/11/13/vesper_sync_diary_6_merging_notes)
 
+#Install
+Install via NPM
+
+        npm install mongoose-schema-lastmodifiedfields
+
 # Usage
 ```
 var mongoose = require("mongoose"),
