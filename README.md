@@ -26,7 +26,7 @@ CarSchema.plugin(lastModifiedFields, {fieldSuffix:"_lastModified",
 ```
 
 ###Options
-The plugin can currently take two options
+The plugin currently has the following options
 
 - ####fieldSuffix
 A string to append to the end of each path to determine the name of each timestamp field. Defaults to "_lastModifiedDate"
@@ -37,6 +37,12 @@ Defaults:
     - Standard id key "**_id**"
     - Discriminator Key (typically "**__t**")
     - Version key (typically "**__v**")
+    
+- ####purgeFromJSON
+Boolean that transforms the schema's toJSON method to remove the timestamp fields from its JSON representation. Defaults to "false"
+
+- ####purgeFromObject
+Boolean that transforms the schema's toObject method to remove the timestamp fields from its Object representation. Defaults to "false"
 
 # Tests
 Test can be run simply by installing and running mocha
