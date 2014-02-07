@@ -1,8 +1,26 @@
 var mongoose = require("mongoose"),
-    _ = require("underscore");
+        _ = require("underscore");
+
+var defaultOptions = {
+    fieldSuffix:"_lastModifiedDate",
+    purgeFromJSON:false,
+    purgeFromObject:false
+};
+
+function purgeFieldsWithSuffix(suffix) {
+    return function(doc, ret, options) {
+        for ( var k in ret )
+        {
+            if ( k.indexOf(suffix) !== -1 )
+            {
+                delete ret[k];
+            }
+        }
+    };
+}
 
 module.exports = exports = function lastModifiedFields(schema, options) {
-    options = _.extend({fieldSuffix:"_lastModifiedDate"}, options);
+    options = _.extend(defaultOptions, options);
     var omittedFields = _.union(options.omittedFields, ['_id', schema.options.discriminatorKey, schema.options.versionKey]);
     var modifedFieldSuffix = options.fieldSuffix;
 
@@ -30,4 +48,18 @@ module.exports = exports = function lastModifiedFields(schema, options) {
         }, this);
         next();
     });
+
+    if ( options.purgeFromJSON )
+    {
+        schema.set('toJSON', {
+            transform: purgeFieldsWithSuffix(modifedFieldSuffix)
+        });
+    }
+
+    if ( options.purgeFromObject )
+    {
+        schema.set('toObject', {
+            transform: purgeFieldsWithSuffix(modifedFieldSuffix)
+        });
+    }
 };

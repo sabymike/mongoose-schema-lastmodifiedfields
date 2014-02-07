@@ -4,7 +4,6 @@ var mongoose = require("mongoose"),
     async = require("async"),
     sleep = require("sleep"),
     lastModifiedFields = require("../");
-
 var Schema = mongoose.Schema;
 
 mongoose.connect(process.env.MONGODB_URL || "mongodb://localhost:27017/mongoose-schema-lastmodifiedfields");
@@ -26,14 +25,14 @@ describe("Schema Key Tests", function() {
     });
 
     var systemKeys = ["_id", CarSchema.options.discriminatorKey, CarSchema.options.versionKey];
-
     var modifiedFieldSuffix = "_lastModified";
+    var omittedFields = ['vin'];
+
+    CarSchema.plugin(lastModifiedFields, {fieldSuffix:modifiedFieldSuffix, omittedFields:omittedFields});
 
     describe("Creating keys", function() {
         before(function() {
             this.schemaPaths = CarSchema.paths;
-            this.omittedFields = ["vin"];
-            CarSchema.plugin(lastModifiedFields, {fieldSuffix:modifiedFieldSuffix, omittedFields:this.omittedFields});
         });
 
         it("should not have created a last modified key on system keys", function() {
@@ -43,7 +42,7 @@ describe("Schema Key Tests", function() {
         });
 
         it("should not have created a last modified key on an omitted field", function() {
-            _.each(this.omittedFields, function(key) {
+            _.each(omittedFields, function(key) {
                 CarSchema.paths.should.not.have.property(key+modifiedFieldSuffix);
             }, this);
         });
@@ -53,12 +52,67 @@ describe("Schema Key Tests", function() {
                 var pathName = pathData.path;
                 var lastModifiedPathName = pathName+modifiedFieldSuffix;
                 if ( systemKeys.indexOf(pathName) === -1 &&
-                     this.omittedFields.indexOf(pathName) === -1 &&
+                     omittedFields.indexOf(pathName) === -1 &&
                      pathName.indexOf(modifiedFieldSuffix) === -1 )
                 {
                     CarSchema.paths.should.have.property(lastModifiedPathName);
                 }
             }, this);
+        });
+    });
+
+    describe("Outputting models", function() {
+        it("should include the modified fields when converted to json", function(done) {
+            this.newCar = new Car({
+                make:"Chevy",
+                model:"Tahoe",
+                vin:"12345ABCDE",
+                miles:50000
+            });
+
+            this.newCar.save(function(err, car) {
+                var json = car.toJSON();
+                json.should.have.property("make"+modifiedFieldSuffix);
+                json.should.have.property("model"+modifiedFieldSuffix);
+                json.should.have.property("miles"+modifiedFieldSuffix);
+                done(err);
+            });
+        });
+
+        it("should strip modified dates if we tell the plugin to purge them from json", function(done) {
+            CarSchema.plugin(lastModifiedFields, {fieldSuffix:modifiedFieldSuffix, omittedFields:omittedFields, purgeFromJSON:true});
+            this.newCar = new Car({
+                make:"Chevy",
+                model:"Tahoe",
+                vin:"12345ABCDE",
+                miles:50000
+            });
+
+            this.newCar.save(function(err, car) {
+                var json = car.toJSON();
+                json.should.not.have.property("make"+modifiedFieldSuffix);
+                json.should.not.have.property("model"+modifiedFieldSuffix);
+                json.should.not.have.property("miles"+modifiedFieldSuffix);
+                done(err);
+            });
+        });
+
+        it("should strip modified dates if we tell the plugin to purge them from the object", function(done) {
+            CarSchema.plugin(lastModifiedFields, {fieldSuffix:modifiedFieldSuffix, omittedFields:omittedFields, purgeFromObject:true});
+            this.newCar = new Car({
+                make:"Chevy",
+                model:"Tahoe",
+                vin:"12345ABCDE",
+                miles:50000
+            });
+
+            this.newCar.save(function(err, car) {
+                var obj = car.toObject();
+                obj.should.not.have.property("make"+modifiedFieldSuffix);
+                obj.should.not.have.property("model"+modifiedFieldSuffix);
+                obj.should.not.have.property("miles"+modifiedFieldSuffix);
+                done(err);
+            });
         });
     });
 
