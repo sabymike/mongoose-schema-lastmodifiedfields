@@ -1,47 +1,39 @@
-var mongoose = require("mongoose"),
-        _ = require("underscore");
+'use strict';
+var _ = require('lodash');
 
 var defaultOptions = {
-    fieldSuffix:"_lastModifiedDate",
-    purgeFromJSON:false,
-    purgeFromObject:false
+    fieldSuffix: '_lastModifiedDate',
+    purgeFromJSON: false,
+    purgeFromObject: false,
+    overwrite: true
 };
-
-function purgeFieldsWithSuffix(suffix) {
-    return function(doc, ret, options) {
-        for ( var k in ret )
-        {
-            if ( k.indexOf(suffix) !== -1 )
-            {
-                delete ret[k];
-            }
-        }
-    };
-}
 
 module.exports = exports = function lastModifiedFields(schema, options) {
     options = _.extend(defaultOptions, options);
     var omittedFields = _.union(options.omittedFields, ['_id', schema.options.discriminatorKey, schema.options.versionKey]);
     var modifedFieldSuffix = options.fieldSuffix;
 
-    schema.eachPath(function(pathName, schemaType) {
+    schema.eachPath(function(pathName, schemaName) {
         // if the path does not already have the modification date suffix, and we are supposed to be inluding this
-        if ( pathName.indexOf(modifedFieldSuffix) === -1 && omittedFields.indexOf(pathName) === -1 )
-        {
+        if (!_.contains(pathName, modifedFieldSuffix) && !_.contains(omittedFields, pathName)) {
             var addObj = {};
-            addObj[pathName+modifedFieldSuffix] = { type: Date };
+            addObj[pathName + modifedFieldSuffix] = {
+                type: Date
+            };
             schema.add(addObj);
         }
     });
 
     schema.pre('save', function(next) {
         var updateTimestamp = new Date();
-        _.each(this.modifiedPaths(), function(modifiedPath) {
-            if ( modifiedPath.indexOf(modifedFieldSuffix) === -1 )
-            {
-                var modifiedDatePath = modifiedPath + modifedFieldSuffix;
-                if ( this.schema.paths[modifiedDatePath] )
-                {
+        var modifiedPaths = this.modifiedPaths();
+
+        _.each(modifiedPaths, function(pathName) {
+            if (!_.contains(pathName, modifedFieldSuffix) &&
+                (options.overwrite || !_.contains(modifiedPaths, pathName + modifedFieldSuffix))) {
+
+                var modifiedDatePath = pathName + modifedFieldSuffix;
+                if (this.schema.paths[modifiedDatePath]) {
                     this.set(modifiedDatePath, updateTimestamp);
                 }
             }
@@ -49,17 +41,21 @@ module.exports = exports = function lastModifiedFields(schema, options) {
         next();
     });
 
-    if ( options.purgeFromJSON )
-    {
-        schema.set('toJSON', {
-            transform: purgeFieldsWithSuffix(modifedFieldSuffix)
-        });
+    var transObj = {
+        transform: function(doc, ret, options) {
+            _.forIn(ret, function(v, k) {
+                if (_.contains(k, modifedFieldSuffix)) {
+                    delete ret[k];
+                }
+            });
+        }
+    };
+
+    if (options.purgeFromJSON) {
+        schema.set('toJSON', transObj);
     }
 
-    if ( options.purgeFromObject )
-    {
-        schema.set('toObject', {
-            transform: purgeFieldsWithSuffix(modifedFieldSuffix)
-        });
+    if (options.purgeFromObject) {
+        schema.set('toObject', transObj);
     }
 };

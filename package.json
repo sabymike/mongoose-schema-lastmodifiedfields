@@ -1,32 +1,37 @@
 {
-    "name":"mongoose-schema-lastmodifiedfields",
-    "version":"0.0.2",
-    "description":"mongoose schema plugin to create last modified fields for each field and update them automatically",
-    "main":"index.js",
-    "scripts": {
-        "test":"mocha"
-    },
-    "keywords": [
-        "mongoose",
-        "schema",
-        "modified",
-        "last",
-        "update"
-    ],
-    "author": "Mike Sabatini <mike@parallelboxes.com>",
-    "license":"MIT",
-    "dependencies": {
-        "underscore":"1.5.x"
-    },
-    "devDependencies":{
-        "mocha":"1.14.x",
-        "should":"2.1.x",
-        "mongoose":"3.8.x",
-        "async":"0.2.x",
-        "sleep":"1.1.x"
-    },
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/sabymike/mongoose-schema-lastmodifiedfields"
-    }
+  "name": "mongoose-schema-lastmodifiedfields",
+  "description": "mongoose schema plugin to create last modified fields for each field and update them automatically",
+  "version": "0.0.3",
+  "author": "Mike Sabatini <mike@parallelboxes.com>",
+  "dependencies": {
+    "lodash": "3.x"
+  },
+  "devDependencies": {
+    "async": "0.2.x",
+    "mocha": "1.14.x",
+    "mongoose": "3.8.x",
+    "precommit-hook": "^2.0.0",
+    "should": "2.1.x",
+    "sleep": "1.1.x"
+  },
+  "keywords": [
+    "last",
+    "modified",
+    "mongoose",
+    "schema",
+    "update"
+  ],
+  "license": "MIT",
+  "main": "index.js",
+  "pre-commit": [
+    "lint",
+    "test"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sabymike/mongoose-schema-lastmodifiedfields"
+  },
+  "scripts": {
+    "test": "mocha -R spec"
+  }
 }
