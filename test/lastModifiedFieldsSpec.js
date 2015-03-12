@@ -240,6 +240,58 @@ describe('Schema Key Tests', function() {
                 ],
                 done);
         });
+    });
+
+    describe('Mongoose oddities', function() {
+        beforeEach(function() {
+
+            this.newCar = new Car({
+                make: 'Subaru',
+                model: 'Outback',
+                vin: '12345ABCDE',
+                miles: 100000
+            });
+        });
+
+        it('should not have lastModifiedFields in modifiedPaths() when assigned', function(done) {
+            // give this test 3 seconds to complete because we sleep to make sure our timestamps differ
+            this.timeout(3000);
+
+            this.newCar.save(function(err, car) {
+                sleep.sleep(2);
+                car.make = 'Volkswagon';
+                car['make' + modifiedFieldSuffix] = new Date();
+                car.modifiedPaths().should.not.containEql(['make' + modifiedFieldSuffix]);
+                done(err);
+            });
+        });
+
+        it('should have lastModifiedFields in modifiedPaths() after calling `markModified`', function(done) {
+            // give this test 3 seconds to complete because we sleep to make sure our timestamps differ
+            this.timeout(3000);
+
+            this.newCar.save(function(err, car) {
+                sleep.sleep(2);
+                car.make = 'Volkswagon';
+                car['make' + modifiedFieldSuffix] = new Date();
+                car.markModified('make' + modifiedFieldSuffix);
+                car.modifiedPaths().should.eql(['make', 'make' + modifiedFieldSuffix]);
+                done(err);
+            });
+        });
+
+        it('should have lastModifiedFields in modifiedPaths() when explicitly `set`', function(done) {
+            // give this test 3 seconds to complete because we sleep to make sure our timestamps differ
+            this.timeout(3000);
+
+            this.newCar.save(function(err, car) {
+                sleep.sleep(2);
+                car.make = 'Volkswagon';
+                car.set('make' + modifiedFieldSuffix, new Date());
+                car.modifiedPaths().should.eql(['make', 'make' + modifiedFieldSuffix]);
+                done(err);
+            });
+        });
 
     });
 });
