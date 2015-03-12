@@ -1,7 +1,7 @@
 {
   "name": "mongoose-schema-lastmodifiedfields",
   "description": "mongoose schema plugin to create last modified fields for each field and update them automatically",
-  "version": "0.0.3",
+  "version": "0.1.0",
   "author": "Mike Sabatini <mike@parallelboxes.com>",
   "dependencies": {
     "lodash": "^3.0.0"
