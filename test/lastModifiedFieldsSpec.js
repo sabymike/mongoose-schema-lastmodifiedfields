@@ -15,8 +15,6 @@ var CarSchema = mongoose.Schema({
     miles: Number
 });
 
-var Car = mongoose.model('Car', CarSchema);
-
 var systemKeys = ['_id', CarSchema.options.discriminatorKey, CarSchema.options.versionKey];
 var modifiedFieldSuffix = '_lastModified';
 var omittedFields = ['vin'];
@@ -26,12 +24,12 @@ CarSchema.plugin(lastModifiedFields, {
     omittedFields: omittedFields
 });
 
+var Car = mongoose.model('Car', CarSchema);
+
 describe('Schema Key Tests', function() {
 
     beforeEach(function(done) {
-        Car.remove({}, function(err) {
-            done(err);
-        });
+        Car.remove({}, done);
     });
 
     describe('Creating keys', function() {
@@ -61,6 +59,11 @@ describe('Schema Key Tests', function() {
                     CarSchema.paths.should.have.property(lastModifiedPathName);
                 }
             }, this);
+        });
+
+        it('should expose last modified suffix as a function', function() {
+            CarSchema.statics.getModifiedFieldSuffix().should.eql(modifiedFieldSuffix);
+            Car.getModifiedFieldSuffix().should.eql(modifiedFieldSuffix);
         });
     });
 
