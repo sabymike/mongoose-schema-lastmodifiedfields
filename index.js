@@ -58,4 +58,8 @@ module.exports = exports = function lastModifiedFields(schema, options) {
     if (options.purgeFromObject) {
         schema.set('toObject', transObj);
     }
+
+    schema.statics.getModifiedFieldSuffix = function() {
+        return modifedFieldSuffix;
+    };
 };
