@@ -52,12 +52,18 @@ Boolean that transforms the schema's toObject method to remove the timestamp fie
 Boolean to determine whether the plugin should overwrite _lastModifiedDate fields, even if they were explicitly modified. Defaults to 'true'
 _Note:_ Dates are treated a little differently in mongoose. To be included in `schema.modifiedPaths()`, the date must either be set via `doc.set(...)` or marked explicitly with `doc.markmodified(...)`. A simple assignment does not flag a date as modified. For more information, see http://mongoosejs.com/docs/schematypes.html#Dates.
 
+- ####select
+Boolean to determine whether the plugin should return _lastModifiedDate fields from a database query by default. This can be overridden on a per-query basis. There is no Default value. For more information, see http://mongoosejs.com/docs/api.html#schematype_SchemaType-select.
+
 ###Methods
 The `modifedFieldSuffix` is exposed by a convenience method on the schema for easy access via `getModifiedFieldSuffix`.
+
+The array of paths to which modifedFieldSuffix has been added is exposed by via `getModifiedFieldPaths`.
 
 ```
 var Car = mongoose.model('Car', CarSchema);
 var modifiedFieldSuffix = Car.getModifiedFieldSuffix();
+var modifiedFieldPaths = Car.getModifiedFieldPaths();
 ```
 
 

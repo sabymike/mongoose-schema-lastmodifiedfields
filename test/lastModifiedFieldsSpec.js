@@ -1,10 +1,9 @@
 var mongoose = require('mongoose'),
     _ = require('lodash'),
     async = require('async'),
+    should = require('should'),
     sleep = require('sleep'),
     lastModifiedFields = require('..');
-
-require('should');
 
 mongoose.connect(process.env.MONGODB_URL || 'mongodb://localhost:27017/mongoose-schema-lastmodifiedfields');
 
@@ -64,6 +63,12 @@ describe('Schema Key Tests', function() {
         it('should expose last modified suffix as a function', function() {
             CarSchema.statics.getModifiedFieldSuffix().should.eql(modifiedFieldSuffix);
             Car.getModifiedFieldSuffix().should.eql(modifiedFieldSuffix);
+        });
+
+        it('should expose the list of paths with last modified suffix as a function', function() {
+            var paths = _.invoke(['make', 'model', 'miles'], 'concat', modifiedFieldSuffix);
+            CarSchema.statics.getModifiedFieldPaths().should.eql(paths);
+            Car.getModifiedFieldPaths().should.eql(paths);
         });
     });
 
@@ -128,6 +133,33 @@ describe('Schema Key Tests', function() {
                 done(err);
             });
         });
+
+        it('should omit modified dates if we tell the plugin to not them from the db', function(done) {
+            CarSchema.plugin(lastModifiedFields, {
+                fieldSuffix: modifiedFieldSuffix,
+                omittedFields: omittedFields,
+                select: false
+            });
+            this.newCar = new Car({
+                make: 'Chevy',
+                model: 'Tahoe',
+                vin: '12345ABCDE',
+                miles: 50000
+            });
+
+            async.waterfall([
+                this.newCar.save,
+                function(car, n, cb) {
+                    Car.findById(car, cb);
+                },
+                function(car, cb) {
+                    should.not.exist(car['make' + modifiedFieldSuffix]);
+                    should.not.exist(car['model' + modifiedFieldSuffix]);
+                    should.not.exist(car['miles' + modifiedFieldSuffix]);
+                    cb();
+                }
+            ], done);
+        });
     });
 
     describe('Saving models', function() {
@@ -155,24 +187,22 @@ describe('Schema Key Tests', function() {
             this.timeout(3000);
 
             var self = this;
-            async.series([
-                    function(callback) {
-                        self.newCar.save(callback);
-                    },
-                    function(callback) {
-                        sleep.sleep(2);
-                        self.newCar.make = 'Volkswagon';
-                        self.newCar.model = 'Jetta';
-                        var now = new Date();
-                        self.newCar.save(function(err, car) {
-                            car.get('make' + modifiedFieldSuffix).should.be.approximately(now, 1);
-                            car.get('model' + modifiedFieldSuffix).should.be.approximately(now, 1);
-                            car.get('miles' + modifiedFieldSuffix).should.not.be.approximately(now, 1);
-                            callback(err);
-                        });
-                    }
-                ],
-                done);
+            async.waterfall([
+                self.newCar.save,
+                function(car, n, cb) {
+                    sleep.sleep(2);
+                    self.newCar.make = 'Volkswagon';
+                    self.newCar.model = 'Jetta';
+                    self.now = new Date();
+                    self.newCar.save(cb);
+                },
+                function(car, n, cb) {
+                    car.get('make' + modifiedFieldSuffix).should.be.approximately(self.now, 1);
+                    car.get('model' + modifiedFieldSuffix).should.be.approximately(self.now, 1);
+                    car.get('miles' + modifiedFieldSuffix).should.not.be.approximately(self.now, 1);
+                    cb();
+                }
+            ], done);
         });
 
         it('should not overwrite modified dates if explicitly set and we tell the plugin to skip', function(done) {
@@ -186,27 +216,25 @@ describe('Schema Key Tests', function() {
             this.timeout(5000);
 
             var self = this;
-            async.series([
-                    function(callback) {
-                        self.newCar.save(callback);
-                    },
-                    function(callback) {
-                        sleep.sleep(2);
-                        var now = new Date();
-                        self.newCar.make = 'Volkswagon';
-                        self.newCar.set('make' + modifiedFieldSuffix, now);
-                        self.newCar.model = 'Jetta';
-                        self.newCar.set('model' + modifiedFieldSuffix, now);
-                        sleep.sleep(2);
-                        self.newCar.save(function(err, car) {
-                            car.get('make' + modifiedFieldSuffix).should.be.approximately(now, 1);
-                            car.get('model' + modifiedFieldSuffix).should.be.approximately(now, 1);
-                            car.get('miles' + modifiedFieldSuffix).should.not.be.approximately(now, 1);
-                            callback(err);
-                        });
-                    }
-                ],
-                done);
+            async.waterfall([
+                self.newCar.save,
+                function(car, n, cb) {
+                    sleep.sleep(2);
+                    self.now = new Date();
+                    self.newCar.make = 'Volkswagon';
+                    self.newCar.set('make' + modifiedFieldSuffix, self.now);
+                    self.newCar.model = 'Jetta';
+                    self.newCar.set('model' + modifiedFieldSuffix, self.now);
+                    sleep.sleep(2);
+                    self.newCar.save(cb);
+                },
+                function(car, n, cb) {
+                    car.get('make' + modifiedFieldSuffix).should.be.approximately(self.now, 1);
+                    car.get('model' + modifiedFieldSuffix).should.be.approximately(self.now, 1);
+                    car.get('miles' + modifiedFieldSuffix).should.not.be.approximately(self.now, 1);
+                    cb();
+                }
+            ], done);
         });
 
         it('should overwrite modified dates even if explicitly set and overwrite option is true', function(done) {
@@ -220,28 +248,26 @@ describe('Schema Key Tests', function() {
             this.timeout(5000);
 
             var self = this;
-            async.series([
-                    function(callback) {
-                        self.newCar.save(callback);
-                    },
-                    function(callback) {
-                        sleep.sleep(2);
-                        var now = new Date();
-                        self.newCar.make = 'Volkswagon';
-                        self.newCar.set('make' + modifiedFieldSuffix, now);
-                        self.newCar.model = 'Jetta';
-                        self.newCar.set('model' + modifiedFieldSuffix, now);
-                        sleep.sleep(2);
-                        now = new Date();
-                        self.newCar.save(function(err, car) {
-                            car.get('make' + modifiedFieldSuffix).should.be.approximately(now, 1);
-                            car.get('model' + modifiedFieldSuffix).should.be.approximately(now, 1);
-                            car.get('miles' + modifiedFieldSuffix).should.not.be.approximately(now, 1);
-                            callback(err);
-                        });
-                    }
-                ],
-                done);
+            async.waterfall([
+                self.newCar.save,
+                function(car, n, cb) {
+                    sleep.sleep(2);
+                    var now = new Date();
+                    self.newCar.make = 'Volkswagon';
+                    self.newCar.set('make' + modifiedFieldSuffix, now);
+                    self.newCar.model = 'Jetta';
+                    self.newCar.set('model' + modifiedFieldSuffix, now);
+                    sleep.sleep(2);
+                    self.now = new Date();
+                    self.newCar.save(cb);
+                },
+                function(car, n, cb) {
+                    car.get('make' + modifiedFieldSuffix).should.be.approximately(self.now, 1);
+                    car.get('model' + modifiedFieldSuffix).should.be.approximately(self.now, 1);
+                    car.get('miles' + modifiedFieldSuffix).should.not.be.approximately(self.now, 1);
+                    cb();
+                }
+            ], done);
         });
     });
 
