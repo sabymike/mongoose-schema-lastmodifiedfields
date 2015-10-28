@@ -7,80 +7,76 @@ var mongoose = require('mongoose'),
 
 mongoose.connect(process.env.MONGODB_URL || 'mongodb://localhost:27017/mongoose-schema-lastmodifiedfields');
 
-var CarSchema = mongoose.Schema({
-    make: String,
-    model: String,
-    vin: String,
-    miles: Number
-});
-
-var systemKeys = ['_id', CarSchema.options.discriminatorKey, CarSchema.options.versionKey];
+var systemKeys = ['_id', '__t', '__v'];
 var modifiedFieldSuffix = '_lastModified';
 var omittedFields = ['vin'];
 
-CarSchema.plugin(lastModifiedFields, {
-    fieldSuffix: modifiedFieldSuffix,
-    omittedFields: omittedFields
-});
-
-var Car = mongoose.model('Car', CarSchema);
-
 describe('Schema Key Tests', function() {
+    before(function(done) {
+        this.CarSchema = mongoose.Schema({
+            make: String,
+            model: String,
+            vin: String,
+            miles: Number
+        });
 
-    beforeEach(function(done) {
-        Car.remove({}, done);
+        this.CarSchema.plugin(lastModifiedFields, {
+            fieldSuffix: modifiedFieldSuffix,
+            omittedFields: omittedFields
+        });
+
+        this.Car = mongoose.model('Car', this.CarSchema);
+
+        this.Car.remove(done);
     });
 
     describe('Creating keys', function() {
-        before(function() {
-            this.schemaPaths = CarSchema.paths;
-        });
-
         it('should not have created a last modified key on system keys', function() {
             _.each(systemKeys, function(key) {
-                CarSchema.paths.should.not.have.property(key + modifiedFieldSuffix);
+                this.CarSchema.paths.should.not.have.property(key + modifiedFieldSuffix);
             }, this);
         });
 
         it('should not have created a last modified key on an omitted field', function() {
             _.each(omittedFields, function(key) {
-                CarSchema.paths.should.not.have.property(key + modifiedFieldSuffix);
+                this.CarSchema.paths.should.not.have.property(key + modifiedFieldSuffix);
             }, this);
         });
 
         it('should have created a last modified key for all other user defined properties', function() {
-            _.each(this.schemaPaths, function(pathData) {
-                var pathName = pathData.path;
+            this.CarSchema.eachPath(function(pathName) {
                 var lastModifiedPathName = pathName + modifiedFieldSuffix;
                 if (!_.contains(systemKeys, pathName) &&
                     !_.contains(omittedFields, pathName) &&
                     !_.contains(pathName, modifiedFieldSuffix)) {
-                    CarSchema.paths.should.have.property(lastModifiedPathName);
+                    this.CarSchema.paths.should.have.property(lastModifiedPathName);
                 }
-            }, this);
+            }.bind(this));
         });
 
         it('should expose last modified suffix as a function', function() {
-            CarSchema.statics.getModifiedFieldSuffix().should.eql(modifiedFieldSuffix);
-            Car.getModifiedFieldSuffix().should.eql(modifiedFieldSuffix);
+            this.CarSchema.statics.getModifiedFieldSuffix().should.eql(modifiedFieldSuffix);
+            this.Car.getModifiedFieldSuffix().should.eql(modifiedFieldSuffix);
         });
 
         it('should expose the list of paths with last modified suffix as a function', function() {
             var paths = _.invoke(['make', 'model', 'miles'], 'concat', modifiedFieldSuffix);
-            CarSchema.statics.getModifiedFieldPaths().should.eql(paths);
-            Car.getModifiedFieldPaths().should.eql(paths);
+            this.CarSchema.statics.getModifiedFieldPaths().should.eql(paths);
+            this.Car.getModifiedFieldPaths().should.eql(paths);
         });
     });
 
     describe('Outputting models', function() {
-        it('should include the modified fields when converted to json', function(done) {
-            this.newCar = new Car({
+        beforeEach(function() {
+            this.newCar = new this.Car({
                 make: 'Chevy',
                 model: 'Tahoe',
                 vin: '12345ABCDE',
                 miles: 50000
             });
+        });
 
+        it('should include the modified fields when converted to json', function(done) {
             this.newCar.save(function(err, car) {
                 var json = car.toJSON();
                 json.should.have.property('make' + modifiedFieldSuffix);
@@ -91,16 +87,10 @@ describe('Schema Key Tests', function() {
         });
 
         it('should strip modified dates if we tell the plugin to purge them from json', function(done) {
-            CarSchema.plugin(lastModifiedFields, {
+            this.CarSchema.plugin(lastModifiedFields, {
                 fieldSuffix: modifiedFieldSuffix,
                 omittedFields: omittedFields,
                 purgeFromJSON: true
-            });
-            this.newCar = new Car({
-                make: 'Chevy',
-                model: 'Tahoe',
-                vin: '12345ABCDE',
-                miles: 50000
             });
 
             this.newCar.save(function(err, car) {
@@ -113,16 +103,10 @@ describe('Schema Key Tests', function() {
         });
 
         it('should strip modified dates if we tell the plugin to purge them from the object', function(done) {
-            CarSchema.plugin(lastModifiedFields, {
+            this.CarSchema.plugin(lastModifiedFields, {
                 fieldSuffix: modifiedFieldSuffix,
                 omittedFields: omittedFields,
                 purgeFromObject: true
-            });
-            this.newCar = new Car({
-                make: 'Chevy',
-                model: 'Tahoe',
-                vin: '12345ABCDE',
-                miles: 50000
             });
 
             this.newCar.save(function(err, car) {
@@ -134,27 +118,25 @@ describe('Schema Key Tests', function() {
             });
         });
 
-        it('should omit modified dates if we tell the plugin to not them from the db', function(done) {
-            CarSchema.plugin(lastModifiedFields, {
+        it('should omit modified dates if we tell the plugin to not select them from the db', function(done) {
+            var self = this;
+            this.CarSchema.plugin(lastModifiedFields, {
                 fieldSuffix: modifiedFieldSuffix,
                 omittedFields: omittedFields,
                 select: false
-            });
-            this.newCar = new Car({
-                make: 'Chevy',
-                model: 'Tahoe',
-                vin: '12345ABCDE',
-                miles: 50000
             });
 
             async.waterfall([
                 this.newCar.save,
                 function(car, n, cb) {
-                    Car.findById(car, cb);
+                    self.Car.findById(car, cb);
                 },
                 function(car, cb) {
+                    should.exist(car.make);
                     should.not.exist(car['make' + modifiedFieldSuffix]);
+                    should.exist(car.model);
                     should.not.exist(car['model' + modifiedFieldSuffix]);
+                    should.exist(car.miles);
                     should.not.exist(car['miles' + modifiedFieldSuffix]);
                     cb();
                 }
@@ -164,7 +146,7 @@ describe('Schema Key Tests', function() {
 
     describe('Saving models', function() {
         beforeEach(function() {
-            this.newCar = new Car({
+            this.newCar = new this.Car({
                 make: 'Honda',
                 model: 'Civic',
                 vin: '12345ABCDE',
@@ -206,7 +188,7 @@ describe('Schema Key Tests', function() {
         });
 
         it('should not overwrite modified dates if explicitly set and we tell the plugin to skip', function(done) {
-            CarSchema.plugin(lastModifiedFields, {
+            this.CarSchema.plugin(lastModifiedFields, {
                 fieldSuffix: modifiedFieldSuffix,
                 omittedFields: omittedFields,
                 overwrite: false
@@ -238,7 +220,7 @@ describe('Schema Key Tests', function() {
         });
 
         it('should overwrite modified dates even if explicitly set and overwrite option is true', function(done) {
-            CarSchema.plugin(lastModifiedFields, {
+            this.CarSchema.plugin(lastModifiedFields, {
                 fieldSuffix: modifiedFieldSuffix,
                 omittedFields: omittedFields,
                 overwrite: true
@@ -273,8 +255,7 @@ describe('Schema Key Tests', function() {
 
     describe('Mongoose oddities', function() {
         beforeEach(function() {
-
-            this.newCar = new Car({
+            this.newCar = new this.Car({
                 make: 'Subaru',
                 model: 'Outback',
                 vin: '12345ABCDE',
@@ -322,5 +303,79 @@ describe('Schema Key Tests', function() {
             });
         });
 
+    });
+});
+
+describe('Embedded Type Tests', function() {
+    before(function(done) {
+        this.CarSchema = mongoose.Schema({
+            style: {
+                make: String,
+                model: String
+            },
+            vin: String,
+            miles: Number
+        });
+
+        this.CarSchema.plugin(lastModifiedFields, {
+            fieldSuffix: modifiedFieldSuffix,
+            omittedFields: omittedFields
+        });
+
+        this.Car = mongoose.model('StyleCar', this.CarSchema);
+
+        this.Car.remove(done);
+    });
+
+    it('should apply last modified suffix to embedded types', function() {
+        this.CarSchema.paths.should.have.property('style.make' + modifiedFieldSuffix);
+        this.CarSchema.paths.should.have.property('style.model' + modifiedFieldSuffix);
+    });
+
+    describe('Outputting models', function() {
+        beforeEach(function() {
+            this.newCar = new this.Car({
+                style: {
+                    make: 'Chevy',
+                    model: 'Tahoe'
+                },
+                vin: '12345ABCDE',
+                miles: 50000
+            });
+        });
+
+        it('should include the modified fields for fields of embedded type', function(done) {
+            this.newCar.save(function(err, car) {
+                should.exist(car.style['make' + modifiedFieldSuffix]);
+                should.exist(car.style['model' + modifiedFieldSuffix]);
+                should.exist(car['miles' + modifiedFieldSuffix]);
+                done(err);
+            });
+        });
+
+        it('should omit modified dates if we tell the plugin to not select them from the db', function(done) {
+            var self = this;
+            this.CarSchema.plugin(lastModifiedFields, {
+                fieldSuffix: modifiedFieldSuffix,
+                omittedFields: omittedFields,
+                select: false
+            });
+
+            async.waterfall([
+                this.newCar.save,
+                function(car, n, cb) {
+                    self.Car.findById(car, cb);
+                },
+                function(car, cb) {
+                    should.exist(car.style.make);
+                    should.not.exist(car.style['make' + modifiedFieldSuffix]);
+                    should.exist(car.style.model);
+                    should.not.exist(car.style['model' + modifiedFieldSuffix]);
+                    should.exist(car.miles);
+                    should.not.exist(car['miles' + modifiedFieldSuffix]);
+                    cb();
+                }
+            ], done);
+        });
     });
 });

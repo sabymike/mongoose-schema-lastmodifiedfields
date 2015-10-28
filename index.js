@@ -21,7 +21,7 @@ module.exports = exports = function lastModifiedFields(schema, options) {
                 type: Date
             });
             if (_.has(options, 'select')) {
-                addObj[pathName].select = options.select; // set default select behavior
+                _.set(addObj, pathName + '.select', options.select); // set default select behavior
             }
             schema.add(addObj);
         }
